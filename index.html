@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FairSplit AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9e4d8;--paper:#fbfaf6;--ink:#23211c;--muted:#6d685c;--line:#cfc8b6;--accent:#1f5f4a;--accent-ink:#fff;--err:#a6321f;--errbg:#f8e3de}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1a17;--paper:#26241f;--ink:#efeadc;--muted:#a49e8d;--line:#413d33;--accent:#7cc7a8;--accent-ink:#10231b;--err:#ff9d8a;--errbg:#3a2420}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:720px;margin:0 auto;display:grid;gap:24px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+h1{font-size:2rem;line-height:1.1;margin:0 0 4px}
+.sub{color:var(--muted);margin:0}
+.lang{display:flex;border:1px solid var(--accent);border-radius:4px;overflow:hidden;flex-shrink:0}
+.lang button{border:0;border-radius:0;padding:6px 12px;background:transparent;color:var(--accent)}
+.lang button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.ticket{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px;box-shadow:0 1px 0 var(--line)}
+label{display:block;font-weight:700;margin-bottom:4px}
+.hint{color:var(--muted);font-size:.875rem;font-weight:400}
+input,textarea{width:100%;font:inherit;font-family:"Courier Prime",monospace;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+textarea{min-height:150px;resize:vertical}
+input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+button{font:inherit;font-weight:700;border-radius:4px;border:1px solid var(--accent);padding:10px 18px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.6;cursor:wait}
+details{margin:16px 0}
+summary{cursor:pointer;font-weight:700}
+details .row{margin-top:12px}
+#errors{background:var(--errbg);color:var(--err);border:1px solid var(--err);border-radius:4px;padding:12px 16px}
+#errors ul{margin:4px 0 0;padding-left:20px}
+.receipt{font-family:"Courier Prime",monospace}
+.person{border-top:2px dashed var(--line);padding:14px 0}
+.person:first-of-type{border-top:0}
+.person h3{margin:0;font:700 1.1rem "Bricolage Grotesque",sans-serif;display:flex;justify-content:space-between;gap:12px}
+.person ul{list-style:none;margin:6px 0;padding:0;color:var(--muted)}
+.person li,.line{display:flex;justify-content:space-between;gap:12px}
+.total{font-weight:700;font-size:1.25rem}
+.bill{border-top:2px solid var(--ink);margin-top:8px;padding-top:10px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.ok{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1 data-i18n="title"></h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Language / Idioma">
+      <button type="button" id="lang-en" aria-pressed="true" lang="en">EN</button>
+      <button type="button" id="lang-es" aria-pressed="false" lang="es">ES</button>
+    </div>
+  </header>
+
+  <section class="ticket" aria-labelledby="t-in">
+    <label for="texto" id="t-in" data-i18n-html="items"></label>
+    <textarea id="texto" data-i18n-ph="ph"></textarea>
+
+    <div class="row" style="margin-top:16px">
+      <div><label for="subtotal" data-i18n-html="subtotal"></label><input id="subtotal" inputmode="decimal" placeholder="80.00"></div>
+      <div><label for="propina" data-i18n="tip"></label><input id="propina" inputmode="decimal" value="10"></div>
+      <div><label for="impuesto" data-i18n="tax"></label><input id="impuesto" inputmode="decimal" value="0"></div>
+      <div><label for="moneda" data-i18n="currency"></label><input id="moneda" value="$" maxlength="4"></div>
+    </div>
+
+    <details>
+      <summary data-i18n="aiTitle"></summary>
+      <p class="hint" data-i18n="aiHint"></p>
+      <div class="row">
+        <div style="grid-column:1/-1"><label for="endpoint">Endpoint</label><input id="endpoint" value="https://openrouter.ai/api/v1/chat/completions"></div>
+        <div style="grid-column:1/-1"><label for="modelo" data-i18n="model"></label><input id="modelo" value="meta-llama/llama-3.3-70b-instruct:free"></div>
+        <div style="grid-column:1/-1"><label for="clave" data-i18n="apiKey"></label><input id="clave" type="password" autocomplete="off"></div>
+      </div>
+    </details>
+
+    <div id="errors" role="alert" hidden></div>
+    <div class="actions"><button id="calc" data-i18n="calc"></button><span id="estado" class="hint" aria-live="polite"></span></div>
+  </section>
+
+  <section id="out" class="ticket receipt" hidden aria-labelledby="t-out">
+    <h2 id="t-out" style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif" data-i18n="result"></h2>
+    <div id="personas"></div>
+    <div class="bill" id="resumen"></div>
+    <div class="actions"><button id="copiar" data-i18n="copy"></button><span id="copiado" class="ok" aria-live="polite"></span></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* ---------- i18n: English is always the default on load ---------- */
+const I = {
+  en:{
+    title:"FairSplit AI", sub:"Write who had what. AI reads your text and the code does the exact math.",
+    items:'Items <span class="hint">Free text, or one line per person: <code>Ann: pizza 30, soda 5</code>. Use "Everyone" for shared items.</span>',
+    ph:"Ann ordered a pizza for 30 and a soda for 5. Luke had a beer for 12 and wings for 18. We all shared nachos for 15.",
+    subtotal:'Bill subtotal <span class="hint">(optional)</span>', tip:"Tip %", tax:"Tax %", currency:"Currency",
+    aiTitle:"AI connection",
+    aiHint:"Without a key, the local reader is used (format \"Name: item amount\"). With a key, any OpenAI-compatible API (OpenRouter, Groq, Together…) works with an open model. The key is stored only in this browser.",
+    model:"Model", apiKey:"API key", calc:"Calculate bill", readAI:"Reading with AI…", readLocal:"Reading with the local reader…",
+    result:"Split", copy:"Copy for WhatsApp", copied:"Copied", copyFail:"Could not copy",
+    errTitle:"Fix this to calculate:", sharedTag:"shared", subL:"Subtotal", tipL:"Tip {p}%", taxL:"Tax {p}%", tipS:"Tip", taxS:"Tax", tableTotal:"Table total",
+    wa:"Split bill", item:"item", every:"Everyone",
+    eNoText:"Write each person's items before calculating.",
+    eNoItems:"No items found. Write at least one person with an amount.",
+    eName:"Item {n}{i}: the person's name is missing.", eAmt:"Item {n}{i}: the amount must be a number greater than zero.",
+    eTip:"Tip must be a number zero or greater.", eTax:"Tax must be a number zero or greater.",
+    eSub:"The bill subtotal must be greater than zero.",
+    eMis:"Items add up to {s} but the subtotal entered is {d}. The maximum allowed difference is 0.01.",
+    eHttp:"The API returned error {c}. Check the key, endpoint and model.",
+    eJson:"The AI returned a format that could not be read. Try again or use the \"Name: item amount\" format.",
+    eParse:"The text could not be understood. Use one line per person, for example: Ann: pizza 30, soda 5",
+    eNet:"Could not reach the AI API. Check your connection or clear the key to use the local reader."
+  },
+  es:{
+    title:"FairSplit AI", sub:"Escribe quién consumió qué. La IA lee tu texto y el código hace las cuentas exactas.",
+    items:'Consumos <span class="hint">Texto libre, o una línea por persona: <code>Ana: pizza 30, refresco 5</code>. Usa «Todos» para lo compartido.</span>',
+    ph:"Ana pidió una pizza de 30 y un refresco de 5. Luis tomó cerveza 12 y alitas 18. Todos compartimos nachos 15.",
+    subtotal:'Subtotal de la cuenta <span class="hint">(opcional)</span>', tip:"Propina %", tax:"Impuesto %", currency:"Moneda",
+    aiTitle:"Conexión con la IA",
+    aiHint:"Sin clave se usa el lector local (formato «Nombre: item monto»). Con clave se usa cualquier API compatible con OpenAI (OpenRouter, Groq, Together…) con un modelo abierto. La clave se guarda solo en este navegador.",
+    model:"Modelo", apiKey:"Clave de API", calc:"Calcular cuenta", readAI:"Leyendo con IA…", readLocal:"Leyendo con el lector local…",
+    result:"Reparto", copy:"Copiar para WhatsApp", copied:"Copiado", copyFail:"No se pudo copiar",
+    errTitle:"Corrige esto para calcular:", sharedTag:"compartido", subL:"Subtotal", tipL:"Propina {p}%", taxL:"Impuesto {p}%", tipS:"Propina", taxS:"Impuesto", tableTotal:"Total de la mesa",
+    wa:"Cuenta dividida", item:"consumo", every:"Todos",
+    eNoText:"Escribe los consumos de cada persona antes de calcular.",
+    eNoItems:"No se encontraron consumos. Escribe al menos una persona con un monto.",
+    eName:"Consumo {n}{i}: falta el nombre de la persona.", eAmt:"Consumo {n}{i}: el monto debe ser un número mayor a cero.",
+    eTip:"La propina debe ser un número igual o mayor a cero.", eTax:"El impuesto debe ser un número igual o mayor a cero.",
+    eSub:"El subtotal de la cuenta debe ser mayor a cero.",
+    eMis:"Los consumos suman {s} pero el subtotal indicado es {d}. La diferencia máxima permitida es 0.01.",
+    eHttp:"La API respondió con error {c}. Revisa la clave, el endpoint y el modelo.",
+    eJson:"La IA devolvió un formato que no se pudo leer. Intenta de nuevo o usa el formato «Nombre: item monto».",
+    eParse:"No se entendió el texto. Usa una línea por persona, por ejemplo: Ana: pizza 30, refresco 5",
+    eNet:"No se pudo conectar con la API de IA. Revisa tu conexión o borra la clave para usar el lector local."
+  }
+};
+let lang = "en"; // never persisted: English is the default on every load
+const t = (k,p={}) => I[lang][k].replace(/\{(\w+)\}/g,(_,x)=>p[x]);
+
+let ultimoCalculo = null, ultimosErrores = [], ultimoTexto = "";
+
+function aplicarIdioma(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(e => e.textContent = I[lang][e.dataset.i18n]);
+  document.querySelectorAll("[data-i18n-html]").forEach(e => e.innerHTML = I[lang][e.dataset.i18nHtml]);
+  document.querySelectorAll("[data-i18n-ph]").forEach(e => e.placeholder = I[lang][e.dataset.i18nPh]);
+  $("lang-en").setAttribute("aria-pressed", lang==="en");
+  $("lang-es").setAttribute("aria-pressed", lang==="es");
+  document.title = t("title");
+  errores(ultimosErrores);
+  if(ultimoCalculo) mostrar(...ultimoCalculo);
+}
+$("lang-en").addEventListener("click", () => { lang="en"; aplicarIdioma(); });
+$("lang-es").addEventListener("click", () => { lang="es"; aplicarIdioma(); });
+
+/* ---------- Storage for AI settings ---------- */
+const store = { get(k){ try{return localStorage.getItem(k)||''}catch(e){return ''} }, set(k,v){ try{localStorage.setItem(k,v)}catch(e){} } };
+["endpoint","modelo","clave"].forEach(id => { const v = store.get("cj_"+id); if(v) $(id).value = v; $(id).addEventListener("change", () => store.set("cj_"+id, $(id).value.trim())); });
+
+/* ---------- Reading: AI or local ---------- */
+const PROMPT = `Convert the text of a restaurant bill into JSON. Reply ONLY with JSON, no extra text or markdown, in this format:
+{"items":[{"persona":"Ann","item":"pizza","monto":30,"compartido":null}]}
+- "monto" is a number (item price, without tip or taxes).
+- Keep names and item descriptions in the language of the text.
+- If an item is shared by several people, set "compartido":["Ann","Luke"] and "persona" to whoever ordered it (or "Everyone").
+- If everyone shares it, set "persona":"Everyone" and "compartido":"all".
+- Do no calculations, only extract the data.`;
+
+async function leerConIA(texto){
+  const r = await fetch($("endpoint").value.trim(), {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+$("clave").value.trim()},
+    body:JSON.stringify({model:$("modelo").value.trim(), temperature:0, messages:[{role:"system",content:PROMPT},{role:"user",content:texto}]})
+  });
+  if(!r.ok) throw ["eHttp",{c:r.status}];
+  const data = await r.json();
+  const limpio = (data?.choices?.[0]?.message?.content || "").replace(/```json|```/g,"").trim();
+  try { return JSON.parse(limpio.slice(limpio.indexOf("{"), limpio.lastIndexOf("}")+1)).items; }
+  catch(e){ throw ["eJson"]; }
+}
+
+function leerLocal(texto){
+  const items = [];
+  texto.split(/\n/).forEach(linea => {
+    const m = linea.match(/^([^:]+):(.+)$/); if(!m) return;
+    const persona = m[1].trim();
+    m[2].split(/[,;]/).forEach(e => {
+      const p = e.trim().match(/^(.*?)(-?\d+(?:[.,]\d+)?)\s*$/); if(!p) return;
+      items.push({persona, item:p[1].trim()||"—", monto:parseFloat(p[2].replace(",",".")), compartido: esTodos(persona) ? "todos" : null});
+    });
+  });
+  if(!items.length) throw ["eParse"];
+  return items;
+}
+
+/* ---------- Validation ---------- */
+const num = s => parseFloat(String(s).replace(",","."));
+const esTodos = n => ["todos","everyone","all"].includes(String(n).trim().toLowerCase());
+const esTodosFlag = v => v==="todos" || v==="all";
+
+function validar(items, o){
+  const e = [];
+  if(!Array.isArray(items) || !items.length) e.push(["eNoItems"]);
+  else items.forEach((it,i) => {
+    const p = {n:i+1, i: it && it.item ? " ("+it.item+")" : ""};
+    if(!it || !String(it.persona||"").trim()) e.push(["eName",p]);
+    if(!Number.isFinite(Number(it && it.monto)) || Number(it.monto) <= 0) e.push(["eAmt",p]);
+  });
+  if(!Number.isFinite(o.propina) || o.propina < 0) e.push(["eTip"]);
+  if(!Number.isFinite(o.impuesto) || o.impuesto < 0) e.push(["eTax"]);
+  if(o.subtotalTxt.trim() !== ""){
+    if(!Number.isFinite(o.subtotal) || o.subtotal <= 0) e.push(["eSub"]);
+    else if(!e.length){
+      const suma = items.reduce((a,x)=>a+Math.round(Number(x.monto)*100),0)/100;
+      if(Math.abs(suma-o.subtotal) > 0.01) e.push(["eMis",{s:suma.toFixed(2),d:o.subtotal.toFixed(2)}]);
+    }
+  }
+  return e;
+}
+
+/* ---------- Exact math in cents ---------- */
+// Leftover cent goes to the largest remainder; ties go to the first person in order of appearance.
+function repartir(total, pesos){
+  const S = pesos.reduce((a,b)=>a+b,0);
+  if(!S) return pesos.map(()=>0);
+  const base = pesos.map(w => Math.floor(total*w/S));
+  const resto = total - base.reduce((a,b)=>a+b,0);
+  const orden = pesos.map((w,i)=>({i, r:(total*w)%S})).sort((a,b)=>b.r-a.r||a.i-b.i);
+  for(let k=0;k<resto;k++) base[orden[k].i]++;
+  return base;
+}
+
+function calcular(items, propina, impuesto){
+  const mapa = new Map();
+  const alta = n => { const k=n.trim().toLowerCase(); if(!mapa.has(k)) mapa.set(k,{nombre:n.trim(),items:[],sub:0}); return mapa.get(k); };
+  items.forEach(it => {
+    if(!esTodos(it.persona)) alta(it.persona);
+    if(Array.isArray(it.compartido)) it.compartido.forEach(n => { if(!esTodos(n)) alta(String(n)); });
+  });
+  const gente = [...mapa.values()];
+  items.forEach(it => {
+    const cents = Math.round(Number(it.monto)*100);
+    let grupo;
+    if(esTodosFlag(it.compartido) || esTodos(it.persona)) grupo = gente;
+    else if(Array.isArray(it.compartido) && it.compartido.length) grupo = [...new Set(it.compartido.concat(it.persona).map(n=>String(n).trim().toLowerCase()))].map(k=>mapa.get(k)).filter(Boolean);
+    else grupo = [alta(it.persona)];
+    repartir(cents, grupo.map(()=>1)).forEach((c,i) => { grupo[i].items.push({texto:it.item||"—", c, compartido:grupo.length>1}); grupo[i].sub += c; });
+  });
+  const sub = gente.reduce((a,p)=>a+p.sub,0);
+  const propC = repartir(Math.round(sub*propina/100), gente.map(p=>p.sub));
+  const impC = repartir(Math.round(sub*impuesto/100), gente.map(p=>p.sub));
+  gente.forEach((p,i) => { p.prop=propC[i]; p.imp=impC[i]; p.total=p.sub+p.prop+p.imp; });
+  return gente;
+}
+
+/* ---------- Rendering ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function mostrar(gente, m, propina, impuesto){
+  ultimoCalculo = [gente, m, propina, impuesto];
+  const f = c => m+" "+(c/100).toFixed(2);
+  const T = k => gente.reduce((a,p)=>a+p[k],0);
+  const tag = i => i.compartido ? " ("+t("sharedTag")+")" : "";
+  $("personas").innerHTML = gente.map(p => `<div class="person"><h3><span>${esc(p.nombre)}</span><span class="total">${f(p.total)}</span></h3>
+    <ul>${p.items.map(i=>`<li><span>${esc(i.texto)}${tag(i)}</span><span>${f(i.c)}</span></li>`).join("")}</ul>
+    <div class="line"><span>${t("subL")}</span><span>${f(p.sub)}</span></div>
+    <div class="line"><span>${t("tipL",{p:propina})}</span><span>${f(p.prop)}</span></div>
+    ${impuesto>0?`<div class="line"><span>${t("taxL",{p:impuesto})}</span><span>${f(p.imp)}</span></div>`:""}</div>`).join("");
+  $("resumen").innerHTML = `<div class="line"><span>${t("subL")}</span><span>${f(T("sub"))}</span></div>
+    <div class="line"><span>${t("tipS")}</span><span>${f(T("prop"))}</span></div>
+    ${impuesto>0?`<div class="line"><span>${t("taxS")}</span><span>${f(T("imp"))}</span></div>`:""}
+    <div class="line total"><span>${t("tableTotal")}</span><span>${f(T("total"))}</span></div>`;
+  $("out").hidden = false;
+  $("copiado").textContent = "";
+  ultimoTexto = "*"+t("wa")+"*\n\n" + gente.map(p => `*${p.nombre}: ${f(p.total)}*\n` + p.items.map(i=>`- ${i.texto}${tag(i)}: ${f(i.c)}`).join("\n") + `\n  ${t("tipS")}: ${f(p.prop)}` + (impuesto>0?` | ${t("taxS")}: ${f(p.imp)}`:"")).join("\n\n") + `\n\n*${t("tableTotal")}: ${f(T("total"))}*`;
+}
+
+function errores(lista){
+  ultimosErrores = lista;
+  const box = $("errors");
+  if(!lista.length){ box.hidden = true; box.innerHTML = ""; return; }
+  box.innerHTML = "<strong>"+t("errTitle")+"</strong><ul>"+lista.map(([k,p])=>"<li>"+esc(t(k,p))+"</li>").join("")+"</ul>";
+  box.hidden = false; $("out").hidden = true; ultimoCalculo = null;
+}
+
+$("calc").addEventListener("click", async () => {
+  const btn = $("calc"), texto = $("texto").value.trim();
+  const o = { propina:num($("propina").value||"0"), impuesto:num($("impuesto").value||"0"), subtotalTxt:$("subtotal").value, subtotal:num($("subtotal").value) };
+  if(!texto){ errores([["eNoText"]]); return; }
+  const usaIA = !!$("clave").value.trim();
+  btn.disabled = true; $("estado").textContent = t(usaIA ? "readAI" : "readLocal");
+  try{
+    const items = usaIA ? await leerConIA(texto) : leerLocal(texto);
+    const errs = validar(items, o);
+    errores(errs);
+    if(!errs.length) mostrar(calcular(items, o.propina, o.impuesto), $("moneda").value.trim()||"$", o.propina, o.impuesto);
+  }catch(e){
+    errores([Array.isArray(e) ? e : ["eNet"]]);
+  }finally{ btn.disabled = false; $("estado").textContent = ""; }
+});
+
+$("copiar").addEventListener("click", async () => {
+  try{ await navigator.clipboard.writeText(ultimoTexto); $("copiado").textContent = t("copied"); }
+  catch(e){ const x=document.createElement("textarea"); x.value=ultimoTexto; document.body.appendChild(x); x.select(); try{document.execCommand("copy"); $("copiado").textContent=t("copied");}catch(_){ $("copiado").textContent=t("copyFail"); } x.remove(); }
+});
+
+aplicarIdioma();
+</script>
+</body>
+</html>
